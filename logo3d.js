@@ -51,6 +51,18 @@ function initLogo3D(container) {
   try { const c=document.createElement('canvas'); if(!c.getContext('webgl2')&&!c.getContext('webgl'))throw 0; }
   catch { if(fallback) container.innerHTML=`<img src="${fallback}" style="width:100%;height:100%;object-fit:contain;">`; return; }
 
+  // Robustness guard: if the container hasn't been laid out yet (clientWidth 0 —
+  // this heavier page can reach logo3d before the first real layout pass), a stale
+  // mobile-MQ height + 0 width would bake a wrong camera aspect into the one-time
+  // logo fit (the ResizeObserver below only re-fits the canvas, never the scale).
+  // Defer until the container has a real width, then init with correct dimensions.
+  if (!container.clientWidth) {
+    const roWait = new ResizeObserver((_, obs) => {
+      if (container.clientWidth) { obs.disconnect(); initLogo3D(container); }
+    });
+    roWait.observe(container);
+    return;
+  }
   const W = container.clientWidth || 800;
   const H = container.clientHeight || 400;
   const isTransparent = bgColor === 'transparent';
